@@ -5,6 +5,7 @@ https://pl.wikipedia.org/wiki/Problem_śpiącego_golibrody
 W salonie pracuje F fryzjerów (F>1) i znajduje się w nim N foteli (N<F). Salon jest czynny w godzinach od Tp do Tk. Klienci przychodzą do salonu w losowych momentach czasu. W salonie znajduje się poczekalnia, która może pomieścić K klientów jednocześnie. Każdy klient rozlicza usługę z fryzjerem przekazując mu kwotę za usługę przed rozpoczęciem strzyżenia. Fryzjer wydaje resztę po zakończeniu obsługi klienta a w przypadku braku możliwości wydania reszty klient musi zaczekać, aż fryzjer znajdzie resztę w kasie. Kasa jest wspólna dla wszystkich fryzjerów. Płatność może być dokonana banknotami o nominałach 10zł, 20zł i 50zł.
 Zasada działania fryzjera (cyklicznie):
 • wybiera klienta z poczekalni (ewentualnie czeka, jeśli go jeszcze nie ma);
+
 • znajduje wolny fotel;
 • pobiera opłatę za usługę i umieszcza we wspólnej kasie (opłata może być również przekazana do wspólnej kasy bezpośrednio przez klienta, ale fryzjer musi znać kwotę, żeby wyliczyć resztę do wydania);
 • realizuje usługę;
