@@ -37,8 +37,4 @@ W salonie pracuje F fryzjerów (F>1) i znajduje się w nim N foteli (N<F). Salon
 
 • opuszcza salon i wraca do zarabiania pieniędzy.
 
-Na polecenie kierownika (sygnał 1) dany fryzjer kończy pracę przed zamknięciem salonu.
-
-Na polecenie kierownika (sygnał 2) wszyscy klienci (ci którzy siedzą na fotelach i z poczekalni) natychmiast opuszczają salon.
-
-Napisz procedury Kasjer (kierownik), Fryzjer i Klient symulujące działanie salonu fryzjerskiego.
+Na polecenie kierownika (sygnał 1) dany fryzjer kończy pracę przed zamknięciem salonu. Na polecenie kierownika (sygnał 2) wszyscy klienci (ci którzy siedzą na fotelach i z poczekalni) natychmiast opuszczają salon. Napisz procedury Kasjer (kierownik), Fryzjer i Klient symulujące działanie salonu fryzjerskiego.
