@@ -8,34 +8,34 @@ W salonie pracuje F fryzjerów (F>1) i znajduje się w nim N foteli (N<F). Salon
 
 **Zasada działania fryzjera (cyklicznie):**
 
-• wybiera klienta z poczekalni (ewentualnie czeka, jeśli go jeszcze nie ma);
+- wybiera klienta z poczekalni (ewentualnie czeka, jeśli go jeszcze nie ma);
 
-• znajduje wolny fotel;
+- znajduje wolny fotel;
 
-• pobiera opłatę za usługę i umieszcza we wspólnej kasie (opłata może być również przekazana do wspólnej kasy bezpośrednio przez klienta, ale fryzjer musi znać kwotę, żeby wyliczyć resztę do wydania);
-• realizuje usługę;
+- pobiera opłatę za usługę i umieszcza we wspólnej kasie (opłata może być również przekazana do wspólnej kasy bezpośrednio przez klienta, ale fryzjer musi znać kwotę, żeby wyliczyć resztę do wydania);
+- realizuje usługę;
 
-• zwalnia fotel;
+- zwalnia fotel;
 
-• wylicza resztę i pobiera ze wspólnej kasy, a jeśli nie jest to możliwe, czeka, aż pojawią się odpowiednie nominały w wyniku pracy innego fryzjera;
+- wylicza resztę i pobiera ze wspólnej kasy, a jeśli nie jest to możliwe, czeka, aż pojawią się odpowiednie nominały w wyniku pracy innego fryzjera;
 
-• przekazuje resztę klientowi.
+- przekazuje resztę klientowi.
 
 **Zasada działania klienta (cyklicznie):**
 
-• zarabia pieniądze;
+- zarabia pieniądze;
 
-• przychodzi do salonu fryzjerskiego;
+- przychodzi do salonu fryzjerskiego;
 
-• jeśli jest wolne miejsce w poczekalni, siada i czeka na obsługę (ewentualnie budzi fryzjera), a w przypadku braku miejsc opuszcza salon i wraca do zarabiania pieniędzy;
+- jeśli jest wolne miejsce w poczekalni, siada i czeka na obsługę (ewentualnie budzi fryzjera), a w przypadku braku miejsc opuszcza salon i wraca do zarabiania pieniędzy;
 
-• po znalezieniu fryzjera płaci za usługę;
+- po znalezieniu fryzjera płaci za usługę;
 
-• czeka na zakończenie usługi;
+- czeka na zakończenie usługi;
 
-• czeka na resztę;
+- czeka na resztę;
 
-• opuszcza salon i wraca do zarabiania pieniędzy.
+- opuszcza salon i wraca do zarabiania pieniędzy.
 
 Na polecenie kierownika (sygnał 1) dany fryzjer kończy pracę przed zamknięciem salonu. Na polecenie kierownika (sygnał 2) wszyscy klienci (ci którzy siedzą na fotelach i z poczekalni) natychmiast opuszczają salon. Napisz procedury Kasjer (kierownik), Fryzjer i Klient symulujące działanie salonu fryzjerskiego.
 
