@@ -38,3 +38,14 @@ W salonie pracuje F fryzjerów (F>1) i znajduje się w nim N foteli (N<F). Salon
 • opuszcza salon i wraca do zarabiania pieniędzy.
 
 Na polecenie kierownika (sygnał 1) dany fryzjer kończy pracę przed zamknięciem salonu. Na polecenie kierownika (sygnał 2) wszyscy klienci (ci którzy siedzą na fotelach i z poczekalni) natychmiast opuszczają salon. Napisz procedury Kasjer (kierownik), Fryzjer i Klient symulujące działanie salonu fryzjerskiego.
+
+**Przykładowe testy:**
+- Test wolnego fotela: Sprawdzono, czy fryzjer zajmuje pierwszy wolny fotel, a klient poprawnie opuszcza poczekalnię po rozpoczęciu usługi.
+
+- Test brak miejsca w poczekalni: Zweryfikowano, że klient opuszcza salon, gdy poczekalnia jest pełna.
+
+- Test zakończenia usługi: Sprawdzono, czy fryzjer po zakończeniu obsługi zwalnia fotel i przekazuje resztę klientowi.
+
+- Test opłaty i wydania reszty: Zweryfikowano, że fryzjer poprawnie oblicza resztę i czeka na odpowiednie nominały w kasie, jeśli są niedostępne.
+
+- Test poczekalni: Sprawdzono, czy klienci są obsługiwani w kolejności przybycia.
