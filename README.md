@@ -1,5 +1,7 @@
 # Salon fryzjerski | Projekt na Systemy Operacyjne
 
+Link do github: https://github.com/styliana/systemy_operacyjne_projekt
+
 Zadanie stanowi rozszerzenie problemu śpiącego fryzjera/golibrody na wielu fryzjerów:
 
 https://pl.wikipedia.org/wiki/Problem_śpiącego_golibrody
