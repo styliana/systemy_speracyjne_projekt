@@ -1,12 +1,11 @@
 #ifndef KLIENT_H
 #define KLIENT_H
 
+#include <semaphore.h>
+
 typedef struct {
-    int id;
-    int kwota;
-    int fotel;
+    int id;                 // ID klienta
+    sem_t* fotel;           // Semafor fotela
 } Klient;
 
-void klient_generuj(Klient *klient, int id);
-
-#endif
+#endif // KLIENT_H
