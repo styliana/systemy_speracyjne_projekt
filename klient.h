@@ -8,4 +8,7 @@ typedef struct {
     sem_t* fotel;           // Semafor fotela
 } Klient;
 
+// Deklaracja funkcji
+void* klient_praca(void* arg);
+
 #endif // KLIENT_H

@@ -4,11 +4,11 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include "fryzjer.h"
-#include "klient.h"
 
 extern sem_t fotel[];
 extern sem_t poczekalnia;
 extern pthread_mutex_t kasa_mutex;
+extern int przychod;  // Deklaracja zmiennej przychodu
 
 void* fryzjer_praca(void* arg) {
     Fryzjer* fryzjer = (Fryzjer*) arg;
@@ -25,6 +25,11 @@ void* fryzjer_praca(void* arg) {
         // Symulacja strzyżenia
         sleep(2);  // Praca fryzjera
         printf("Fryzjer %d: Kończę strzyżenie.\n", fryzjer->id);
+
+        // Aktualizacja przychodu
+        pthread_mutex_lock(&kasa_mutex);
+        przychod += CENA_USLUGI;  // Dodanie kosztu usługi
+        pthread_mutex_unlock(&kasa_mutex);
 
         // Zwolnienie fotela
         sem_post(&fotel[fotel_id]);

@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#define CENA_USLUGI 50  // Przeniesienie definicji do pliku nagłówkowego
+
 typedef struct {
     int id;                 // ID fryzjera
     sem_t *fotel;           // Semafor do zajmowania fotela
