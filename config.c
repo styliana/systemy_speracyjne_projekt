@@ -1,6 +1,6 @@
 #include "config.h"
 
-// Initialization of global variables
+// Zmienne globalne
 sem_t fotele, klient, service_done;  // Semafory
 pthread_mutex_t mutex, kasa_mutex, mutex_poczekalnia; // Mutexy
 pthread_cond_t cond_fryzjer, cond_klient; // Zmienne warunkowe
