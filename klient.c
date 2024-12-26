@@ -1,29 +1,35 @@
+#include "config.h"
+#include "fryzjer.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <pthread.h>
-#include <semaphore.h>
 #include <unistd.h>
-#include "klient.h"
 
-extern sem_t fotel[];
-extern sem_t poczekalnia;
+void *klient_praca(void *arg) {
+    int id = (long)arg;
 
-void* klient_praca(void* arg) {
-    Klient* klient = (Klient*) arg;
+    printf("Klient %d: Przychodzę do salonu.\n", id);
 
-    printf("Klient %d: Przychodzę do salonu.\n", klient->id);
+    // Zabezpiecz dostęp do poczekalni
+    pthread_mutex_lock(&mutex_poczekalnia);
 
-    // Czekaj na wolne miejsce w poczekalni
-    if (sem_trywait(&poczekalnia) == 0) {
-        printf("Klient %d: Siadam w poczekalni.\n", klient->id);
-        // Przechodzimy do fryzjera
-        sem_post(klient->fotel);
-        // Symulacja płatności
-        sleep(1);
-        printf("Klient %d: Zakończyłem strzyżenie i opuszczam salon.\n", klient->id);
+    // Jeśli są wolne miejsca w poczekalni
+    if (klienci_w_poczekalni < LICZBA_MIEJSC_W_POCZEKALNI) {
+        klienci_w_poczekalni++;  // Klient siada w poczekalni
+        wolne_fotele--;  // Zajmujemy fotel
+        printf("Klient %d: Siadam w poczekalni.\n", id);
+
+        // Zbudź fryzjera, jeśli jest dostępny
+        pthread_cond_signal(&cond_fryzjer);  // Sygnał dla fryzjera
+
+        // Czekaj na obsługę
+        pthread_cond_wait(&cond_klient, &mutex_poczekalnia);
+        printf("Klient %d: Opuszczam salon zadowolony.\n", id);
     } else {
-        printf("Klient %d: Brak miejsca w poczekalni, opuszczam salon.\n", klient->id);
+        printf("Klient %d: Brak miejsca w poczekalni. Wychodzę.\n", id);
     }
+
+    // Po zakończeniu usługi zwalniamy fotel
+    pthread_mutex_unlock(&mutex_poczekalnia);
 
     return NULL;
 }

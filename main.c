@@ -1,85 +1,69 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
+#include "config.h"
 #include "fryzjer.h"
 #include "klient.h"
-#include "kierownik.h"
-#include "config.h"
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-// Deklaracje semaforów globalnych
-sem_t poczekalnia;
-sem_t fotel[MAX_FOTELI];
+#define LICZBA_FRYZJEROW 3  // Zmniejszenie liczby fryzjerów dla testów
+#define LICZBA_KLIENTOW 100  // Maksymalna liczba klientów (dla testów)
 
-// Funkcja do inicjalizacji semaforów
-void init_semaphores() {
-    if (sem_init(&poczekalnia, 0, MAX_KLIENTOW) == -1) {
-        perror("Błąd inicjalizacji semafora poczekalnia");
-        exit(EXIT_FAILURE);
-    }
-    for (int i = 0; i < MAX_FOTELI; i++) {
-        if (sem_init(&fotel[i], 0, 1) == -1) {
-            perror("Błąd inicjalizacji semafora fotel");
-            exit(EXIT_FAILURE);
-        }
-    }
-}
-
-// Funkcja do tworzenia wątków z obsługą błędów
-void create_threads(pthread_t *threads, int num_threads, void* (*start_routine)(void*), void *args[]) {
-    for (int i = 0; i < num_threads; i++) {
-        if (pthread_create(&threads[i], NULL, start_routine, args[i]) != 0) {
-            perror("Błąd tworzenia wątku");
-            exit(EXIT_FAILURE);
-        }
-    }
-}
-
-// Główna funkcja programu
 int main() {
-    srand(time(NULL)); // Inicjalizacja generatora liczb losowych
+    // Inicjalizacja mutexów
+    pthread_mutex_init(&kasa_mutex, NULL);
+    pthread_mutex_init(&mutex_poczekalnia, NULL);
 
     // Inicjalizacja semaforów
-    init_semaphores();
+    sem_init(&fotele, 0, MAX_FOTELI);  // Semafor dla foteli
+    sem_init(&klient, 0, 0);            // Semafor dla klientów
+    sem_init(&service_done, 0, 0);      // Semafor do sygnalizowania zakończenia usługi
 
-    // Tablice wątków i argumentów
-    pthread_t fryzjerzy[MAX_FOTELI], klienci[MAX_KLIENTOW];
-    int fryzjer_id[MAX_FOTELI];
-    Klient klient[MAX_KLIENTOW];
-    void *klient_args[MAX_KLIENTOW], *fryzjer_args[MAX_FOTELI];
+    pthread_t fryzjerzy[LICZBA_FRYZJEROW];
+    pthread_t klienci[LICZBA_KLIENTOW];
 
-    // Przygotowanie argumentów dla fryzjerów i klientów
-    for (int i = 0; i < MAX_FOTELI; i++) {
-        fryzjer_id[i] = i + 1;
-        fryzjer_args[i] = &fryzjer_id[i];
-    }
-    for (int i = 0; i < MAX_KLIENTOW; i++) {
-        klient[i].id = i + 1;
-        klient_args[i] = &klient[i];
+    // Tworzenie wątków fryzjerów
+    for (int i = 0; i < LICZBA_FRYZJEROW; i++) {
+        if (pthread_create(&fryzjerzy[i], NULL, fryzjer_praca, (void *)(long)i) != 0) {
+            perror("Błąd tworzenia wątku fryzjera");
+            exit(1);
+        }
     }
 
-    // Tworzenie wątków dla fryzjerów i klientów
-    create_threads(fryzjerzy, MAX_FOTELI, fryzjer_praca, fryzjer_args);
-    create_threads(klienci, MAX_KLIENTOW, klient_praca, klient_args);
+    // Losowe generowanie klientów w odstępach czasowych
+    srand(time(NULL));  // Inicjalizacja generatora liczb losowych
+    int klient_id = 0;
 
-    // Dołączanie wątków klientów
-    for (int i = 0; i < MAX_KLIENTOW; i++) {
+    while (klient_id < LICZBA_KLIENTOW) {
+        // Tworzenie nowego klienta
+        if (pthread_create(&klienci[klient_id], NULL, klient_praca, (void *)(long)klient_id) != 0) {
+            perror("Błąd tworzenia wątku klienta");
+            exit(1);
+        }
+
+        // Zwiększamy ID klienta
+        klient_id++;
+
+        // Czekamy losowy czas przed dodaniem kolejnego klienta (losowy czas między 1 a 5 sekund)
+        sleep(rand() % 5 + 1);  // Sleep w przedziale 1-5 sekund
+    }
+
+    // Czekamy na zakończenie wątków fryzjerów
+    for (int i = 0; i < LICZBA_FRYZJEROW; i++) {
+        pthread_join(fryzjerzy[i], NULL);
+    }
+    // Czekamy na zakończenie wątków klientów
+    for (int i = 0; i < klient_id; i++) {
         pthread_join(klienci[i], NULL);
     }
 
-    // Dołączanie wątków fryzjerów
-    for (int i = 0; i < MAX_FOTELI; i++) {
-        pthread_join(fryzjerzy[i], NULL);
-    }
-
-    // Zwalnianie zasobów
-    sem_destroy(&poczekalnia);
-    for (int i = 0; i < MAX_FOTELI; i++) {
-        sem_destroy(&fotel[i]);
-    }
+    // Czyszczenie zasobów
+    sem_destroy(&fotele);
+    sem_destroy(&klient);
+    sem_destroy(&service_done);
+    pthread_mutex_destroy(&kasa_mutex);
+    pthread_mutex_destroy(&mutex_poczekalnia);
 
     return 0;
 }
