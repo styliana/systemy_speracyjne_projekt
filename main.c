@@ -1,68 +1,86 @@
 #include "config.h"
-#include "fryzjer.h"
 #include "klient.h"
+#include "fryzjer.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
-#define LICZBA_FRYZJEROW 3  // Zmniejszenie liczby fryzjerów dla testów
-#define LICZBA_KLIENTOW 100  // Maksymalna liczba klientów (dla testów)
+int start_hour;
+
+pthread_t klienci[MAX_KLIENTOW];
+pthread_t fryzjerzy[MAX_FRYZJEROW];
+
+void sprawdz_godzine_startu(int godzina_startu) {
+    if (godzina_startu < 8 || godzina_startu >= 17) {
+        printf("\033[0;31m[ERROR]: Godzina %d jest poza godzinami pracy salonu (8:00 - 17:00).\033[0m\n", godzina_startu);
+        exit(0);
+    } else {
+        printf("\033[0;36m[INFO]: Symulacja rozpocznie się o godzinie %d:00.\033[0m\n", godzina_startu);
+    }
+}
+
+void *symuluj_czas(void *arg) {
+    int godzina_startu = *(int *)arg;
+    int godzina = godzina_startu;
+    int minuta = 0;
+
+    while (praca_trwa) {
+        usleep(1000000);  // Symulacja upływu 1 sekundy
+
+        minuta++;
+        if (minuta == 60) {
+            minuta = 0;
+            godzina++;
+            if (godzina == 17) {
+                printf("\033[0;36m[INFO]: Minął czas pracy salonu, zamykamy salon.\033[0m\n");
+                praca_trwa = 0;
+                break;
+            }
+        }
+
+        if (minuta % 20 == 0) {
+            printf("\033[0;36m[INFO]: Aktualna godzina: %02d:%02d\033[0m\n", godzina, minuta);
+        }
+    }
+
+    return NULL;
+}
 
 int main() {
-    // Inicjalizacja mutexów
-    pthread_mutex_init(&kasa_mutex, NULL);
+    srand(time(NULL));
+
+    sem_init(&fotele, 0, MAX_FOTELI);
+    sem_init(&service_done, 0, 0);
     pthread_mutex_init(&mutex_poczekalnia, NULL);
 
-    // Inicjalizacja semaforów
-    sem_init(&fotele, 0, MAX_FOTELI);  // Semafor dla foteli
-    sem_init(&klient, 0, 0);            // Semafor dla klientów
-    sem_init(&service_done, 0, 0);      // Semafor do sygnalizowania zakończenia usługi
+    printf("\033[0;33mPodaj godzinę rozpoczęcia symulacji (od 8 do 16): \033[0m");
+    scanf("%d", &start_hour);
+    sprawdz_godzine_startu(start_hour);
 
-    pthread_t fryzjerzy[LICZBA_FRYZJEROW];
-    pthread_t klienci[LICZBA_KLIENTOW];
-
-    // Tworzenie wątków fryzjerów
-    for (int i = 0; i < LICZBA_FRYZJEROW; i++) {
-        if (pthread_create(&fryzjerzy[i], NULL, fryzjer_praca, (void *)(long)i) != 0) {
-            perror("Błąd tworzenia wątku fryzjera");
-            exit(1);
-        }
+    for (int i = 0; i < MAX_FRYZJEROW; i++) {
+        pthread_create(&fryzjerzy[i], NULL, fryzjer_praca, (void *)(long)i);
     }
 
-    // Losowe generowanie klientów w odstępach czasowych
-    srand(time(NULL));  // Inicjalizacja generatora liczb losowych
-    int klient_id = 0;
-
-    while (klient_id < LICZBA_KLIENTOW) {
-        // Tworzenie nowego klienta
-        if (pthread_create(&klienci[klient_id], NULL, klient_praca, (void *)(long)klient_id) != 0) {
-            perror("Błąd tworzenia wątku klienta");
-            exit(1);
-        }
-
-        // Zwiększamy ID klienta
-        klient_id++;
-
-        // Czekamy losowy czas przed dodaniem kolejnego klienta (losowy czas między 1 a 5 sekund)
-        sleep(rand() % 5 + 1);  // Sleep w przedziale 1-5 sekund
+    for (int i = 0; i < MAX_KLIENTOW; i++) {
+        int *id = malloc(sizeof(int));
+        *id = i;
+        pthread_create(&klienci[i], NULL, klient_praca, (void *)id);
+        sleep(1);
     }
 
-    // Czekamy na zakończenie wątków fryzjerów
-    for (int i = 0; i < LICZBA_FRYZJEROW; i++) {
-        pthread_join(fryzjerzy[i], NULL);
-    }
-    // Czekamy na zakończenie wątków klientów
-    for (int i = 0; i < klient_id; i++) {
+    for (int i = 0; i < MAX_KLIENTOW; i++) {
         pthread_join(klienci[i], NULL);
     }
 
-    // Czyszczenie zasobów
+    for (int i = 0; i < MAX_FRYZJEROW; i++) {
+        pthread_join(fryzjerzy[i], NULL);
+    }
+
     sem_destroy(&fotele);
-    sem_destroy(&klient);
     sem_destroy(&service_done);
-    pthread_mutex_destroy(&kasa_mutex);
     pthread_mutex_destroy(&mutex_poczekalnia);
 
     return 0;

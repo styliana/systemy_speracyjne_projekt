@@ -2,41 +2,37 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <stdlib.h>
-#include <errno.h>
 
 void *fryzjer_praca(void *arg) {
-    int id = (long)arg;
+    int id = (long)arg;  // ID fryzjera
 
-    while (1) {
+    while (praca_trwa) {  // Pętla trwa do zakończenia pracy salonu
         pthread_mutex_lock(&mutex_poczekalnia);
 
-        // Czekaj na dostępnych klientów w poczekalni
-        while (klienci_w_poczekalni == 0) {
-            pthread_cond_wait(&cond_fryzjer, &mutex_poczekalnia);  // Czekaj na klienta
+        // Czekaj, aż będzie klient do obsługi
+        while (klienci_w_poczekalni == 0 && praca_trwa) {
+            printf("\033[0;34m[FRYZJER %d]: Czekam na klienta.\033[0m\n", id);
+            pthread_cond_wait(&cond_fryzjer, &mutex_poczekalnia);  // Czekaj na klientów
+        }
+
+        if (!praca_trwa) {
+            pthread_mutex_unlock(&mutex_poczekalnia);
+            break;  // Koniec pracy fryzjera
         }
 
         // Obsługuje klienta
-        if (klienci_w_poczekalni > 0) {
-            klienci_w_poczekalni--;  // Obsługujemy klienta
-            wolne_fotele++;  // Zwolnij fotel
-            printf("Fryzjer %d: Obsługuję klienta.\n", id);
+        klienci_w_poczekalni--;
+        printf("\033[0;34m[FRYZJER %d]: Obsługuję klienta. Liczba oczekujących: %d.\033[0m\n", id, klienci_w_poczekalni);
 
-            // Symulacja pracy fryzjera (czas obsługi klienta)
-            sleep(2);  // Czas pracy fryzjera
+        pthread_mutex_unlock(&mutex_poczekalnia);  // Zwolnij mutex
 
-            // Kasa fryzjera
-            pthread_mutex_lock(&kasa_mutex);
-            kasa[0] += 20;  // Dodajemy 20 PLN do kasy
-            zarobki += 20;  // Fryzjer zarabia 20 PLN
-            pthread_mutex_unlock(&kasa_mutex);
+        // Symulacja strzyżenia
+        sleep(2);  // Czas obsługi
 
-            // Obsługa zakończona, powiadom klienta
-            printf("Fryzjer %d: Obsługa zakończona.\n", id);
-            pthread_cond_signal(&cond_klient);  // Powiadom klienta, że usługa się zakończyła
-        }
+        // Zakończenie obsługi klienta
+        printf("\033[0;34m[FRYZJER %d]: Zakończyłem strzyżenie klienta.\033[0m\n", id);
 
-        pthread_mutex_unlock(&mutex_poczekalnia);  // Zwalniamy mutex
+        sem_post(&service_done);  // Zakończenie usługi dla klienta
     }
 
     return NULL;

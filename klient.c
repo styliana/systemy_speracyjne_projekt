@@ -1,35 +1,37 @@
 #include "config.h"
-#include "fryzjer.h"
 #include <stdio.h>
-#include <pthread.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <semaphore.h>
+#include <pthread.h>
 
 void *klient_praca(void *arg) {
-    int id = (long)arg;
+    int id = *(int *)arg;  // ID klienta
+    free(arg);  // Zwalniamy pamięć po ID klienta
 
-    printf("Klient %d: Przychodzę do salonu.\n", id);
+    if (praca_trwa) {
+        printf("\033[0;32m[KLIENT %d]: Przyszedłem do salonu.\033[0m\n", id);
 
-    // Zabezpiecz dostęp do poczekalni
-    pthread_mutex_lock(&mutex_poczekalnia);
+        sem_wait(&fotele);  // Czekaj na dostępność fotela
 
-    // Jeśli są wolne miejsca w poczekalni
-    if (klienci_w_poczekalni < LICZBA_MIEJSC_W_POCZEKALNI) {
-        klienci_w_poczekalni++;  // Klient siada w poczekalni
-        wolne_fotele--;  // Zajmujemy fotel
-        printf("Klient %d: Siadam w poczekalni.\n", id);
+        printf("\033[0;32m[KLIENT %d]: Siadam w poczekalni.\033[0m\n", id);
 
-        // Zbudź fryzjera, jeśli jest dostępny
-        pthread_cond_signal(&cond_fryzjer);  // Sygnał dla fryzjera
+        pthread_mutex_lock(&mutex_poczekalnia);
+        if (klienci_w_poczekalni < LICZBA_MIEJSC_W_POCZEKALNI) {
+            klienci_w_poczekalni++;
+            printf("\033[0;32m[KLIENT %d]: Dodałem się do poczekalni. Liczba oczekujących: %d.\033[0m\n", id, klienci_w_poczekalni);
 
-        // Czekaj na obsługę
-        pthread_cond_wait(&cond_klient, &mutex_poczekalnia);
-        printf("Klient %d: Opuszczam salon zadowolony.\n", id);
-    } else {
-        printf("Klient %d: Brak miejsca w poczekalni. Wychodzę.\n", id);
+            pthread_cond_signal(&cond_fryzjer);  // Powiadamiamy fryzjera, że klient jest dostępny
+        } else {
+            printf("\033[0;31m[KLIENT %d]: Poczekalnia pełna, czekam na wolne miejsce.\033[0m\n", id);
+        }
+        pthread_mutex_unlock(&mutex_poczekalnia);
+
+        sem_wait(&service_done);  // Czekaj na zakończenie usługi
+
+        printf("\033[0;32m[KLIENT %d]: Zakończyłem usługę.\033[0m\n", id);
+        sem_post(&fotele);  // Zwolnij fotel (fryzjer może go wykorzystać)
     }
-
-    // Po zakończeniu usługi zwalniamy fotel
-    pthread_mutex_unlock(&mutex_poczekalnia);
 
     return NULL;
 }
