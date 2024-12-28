@@ -4,10 +4,10 @@
 #include <semaphore.h>
 #include <pthread.h>
 
-#define MAX_FOTELI 2                  // Maksymalna liczba foteli w salonie
+#define MAX_FOTELI 3                  // Maksymalna liczba foteli w salonie
 #define MAX_KLIENTOW 100              // Maksymalna liczba klientów
 #define MAX_FRYZJEROW 5               // Maksymalna liczba fryzjerów
-#define LICZBA_MIEJSC_W_POCZEKALNI 2  // Liczba miejsc w poczekalni
+#define LICZBA_MIEJSC_W_POCZEKALNI 5  // Liczba miejsc w poczekalni
 
 // Deklaracje zmiennych globalnych
 extern sem_t fotele, klient, service_done;  // Semafory
@@ -17,5 +17,9 @@ extern int klienci_w_poczekalni;   // Liczba klientów w poczekalni
 extern int zarobki;                // Zarobki fryzjera
 extern int praca_trwa;             // Zmienna pracy salonu
 extern int start_hour;             // Godzina rozpoczęcia pracy
+extern int godzina, minuta;        // Godzina i minuta symulacji
+
+// Kasa
+extern int kasa[];    // Liczba banknotów w kasie
 
 #endif // CONFIG_H
