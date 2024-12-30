@@ -64,10 +64,25 @@ int main() {
     srand(time(NULL));
 
     // Inicjalizujemy semafory i mutexy
-    sem_init(&fotel, 0, MAX_FOTELI);
-    sem_init(&service_done, 0, 0);
-    pthread_mutex_init(&mutex_poczekalnia, NULL);
-    pthread_mutex_init(&kasa_mutex, NULL);
+        // Inicjalizacja semaforów
+    if (sem_init(&fotele, 0, MAX_FOTELI) != 0) {
+        perror("Nie udalo sie stworzyc semafora fotel");
+        exit(EXIT_FAILURE);
+    }
+    if (sem_init(&service_done, 0, 0) != 0) {
+        perror("Nie udalo sie stworzyc semafora service_done");
+        exit(EXIT_FAILURE);
+    }
+
+    // Inicjalizacja mutexów
+    if (pthread_mutex_init(&mutex_poczekalnia, NULL) != 0) {
+        perror("Nie udalo sie stworzyc mutexa mutex_poczekalnia");
+        exit(EXIT_FAILURE);
+    }
+    if (pthread_mutex_init(&kasa_mutex, NULL) != 0) {
+        perror("Nie udalo sie stworzyc mutexa kasa_mutex");
+        exit(EXIT_FAILURE);
+    }
 
     // Sprawdzamy godzinę rozpoczęcia symulacji
     sprawdz_godzine_startu();
