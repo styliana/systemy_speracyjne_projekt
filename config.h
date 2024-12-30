@@ -3,6 +3,11 @@
 
 #include <semaphore.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>  // For rand()
+#include <unistd.h>  // For sleep()
+
+
 
 #define MAX_FOTELI 3                  // Maksymalna liczba foteli w salonie
 #define MAX_KLIENTOW 100              // Maksymalna liczba klientów
@@ -21,5 +26,11 @@ extern int godzina, minuta;        // Godzina i minuta symulacji
 
 // Kasa
 extern int kasa[];    // Liczba banknotów w kasie
+
+// Funkcje
+void sprawdz_godzine_startu();
+void *symuluj_czas(void *arg);
+void aktualizuj_kase(int *kasa_10, int *kasa_20, int *kasa_50, int zaplata_10, int zaplata_20, int zaplata_50);
+void zaplac(int cena);
 
 #endif // CONFIG_H

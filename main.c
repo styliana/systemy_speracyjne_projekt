@@ -23,47 +23,6 @@ pthread_mutex_t mutex_poczekalnia;
 pthread_mutex_t kasa_mutex;
 sem_t fotel, service_done;
 
-void sprawdz_godzine_startu() {
-    int godzina_startu, minuta_startu;
-    char czas_startu[6];  // Bufor na format hh:mm
-
-    while (1) {
-        printf("Podaj godzinę rozpoczęcia symulacji w formacie hh:mm (od 8:00 do 16:00): ");
-        
-        // Czytanie czasu w formacie hh:mm
-        if (scanf("%5s", czas_startu) != 1) {
-            // Błąd wprowadzania danych
-            while (getchar() != '\n');  // Czyszczenie bufora
-            printf("\033[0;31m[ERROR]: Wprowadzono nieprawidłową godzinę. Spróbuj ponownie.\033[0m\n");
-            continue;
-        }
-
-        // Próba sparsowania godziny i minut
-        if (sscanf(czas_startu, "%d:%d", &godzina_startu, &minuta_startu) != 2) {
-            // Błąd formatu
-            printf("\033[0;31m[ERROR]: Wprowadzono nieprawidłowy format godziny. Spróbuj ponownie.\033[0m\n");
-            continue;
-        }
-
-        // Sprawdzanie, czy godzina jest w poprawnym zakresie (8-16)
-        if (godzina_startu < 8 || godzina_startu >= 17) {
-            printf("\033[0;31m[ERROR]: Godzina %d:%02d jest poza godzinami pracy salonu (8:00 - 17:00).\033[0m\n", godzina_startu, minuta_startu);
-            continue;
-        }
-
-        // Sprawdzanie, czy minuty są w poprawnym zakresie (00-59)
-        if (minuta_startu < 0 || minuta_startu >= 60) {
-            printf("\033[0;31m[ERROR]: Minuty %02d są niepoprawne. Spróbuj ponownie.\033[0m\n", minuta_startu);
-            continue;
-        }
-
-        // Jeśli godzina i minuty są poprawne
-        printf("\033[0;36m[INFO]: Symulacja rozpocznie się o godzinie %d:%02d.\033[0m\n", godzina_startu, minuta_startu);
-        start_hour = godzina_startu;
-        break;  // Godzina jest poprawna, wychodzimy z pętli
-    }
-}
-
 void *symuluj_czas(void *arg) {
     int godzina_startu = *(int *)arg;
     godzina = godzina_startu;  // Inicjalizacja godziny na wartość podaną przez użytkownika
@@ -77,20 +36,29 @@ void *symuluj_czas(void *arg) {
             minuta = 0;
             godzina++;
             if (godzina == 17) {
-                printf("\033[0;36m[INFO]: Minął czas pracy salonu, zamykamy salon.\033[0m\n");
+                printf("\033[0;36m[INFO]: Minął czas pracy salonu, zamknięcie salonu.\033[0m\n");
+
+                // Wyświetlenie końcowego stanu kasy po dniu
+                int suma = kasa[0] * 10 + kasa[1] * 20 + kasa[2] * 50;
+                printf("\033[0;36m[INFO]: Ostateczna suma w kasie: %d zł.\033[0m\n", suma);
+
                 salon_otwarty = 0;  // Zamykamy salon
                 break;
             }
         }
 
-        // Co 20 minut wyświetlamy godzinę
+        // Co 20 minut wyświetlamy godzinę oraz stan kasy
         if (minuta % 20 == 0 || (godzina == godzina_startu && minuta == 0)) {
             printf("\033[0;36m[INFO]: Aktualna godzina: %02d:%02d\033[0m\n", godzina, minuta);
+            int suma = kasa[0] * 10 + kasa[1] * 20 + kasa[2] * 50;
+            printf("\033[0;36m[INFO]: Stan kasy: %d zł.\033[0m\n", suma);  // Wyświetlenie stanu kasy
         }
     }
 
     return NULL;
 }
+
+
 
 int main() {
     srand(time(NULL));
