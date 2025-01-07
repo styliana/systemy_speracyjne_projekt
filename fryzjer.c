@@ -38,7 +38,7 @@ void *fryzjer_praca(void *arg) {
         zaplac(cena_uslugi);  // Klient płaci przed strzyżeniem
 
         // Symulacja strzyżenia
-        sleep(2);  // Czas obsługi
+        sleep(5);  // Czas obsługi
 
         // Zakończenie obsługi klienta
         printf("\033[0;34m[FRYZJER %d]: Zakończyłem strzyżenie klienta.\033[0m\n", id);

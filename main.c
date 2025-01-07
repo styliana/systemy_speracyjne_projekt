@@ -63,26 +63,25 @@ void *symuluj_czas(void *arg) {
 int main() {
     srand(time(NULL));
 
-    // Inicjalizujemy semafory i mutexy
-        // Inicjalizacja semaforów
-    if (sem_init(&fotele, 0, MAX_FOTELI) != 0) {
-        perror("Nie udalo sie stworzyc semafora fotel");
-        exit(EXIT_FAILURE);
-    }
-    if (sem_init(&service_done, 0, 0) != 0) {
-        perror("Nie udalo sie stworzyc semafora service_done");
-        exit(EXIT_FAILURE);
-    }
+    // Inicjalizacja semaforów
+if (sem_init(&fotele, 0, MAX_FOTELI) != 0) {  // 0 - semafor prywatny dla wątków
+    perror("Nie udalo sie stworzyc semafora fotel");
+    exit(EXIT_FAILURE);
+}
+if (sem_init(&service_done, 0, 0) != 0) {  // 0 - semafor prywatny dla wątków
+    perror("Nie udalo sie stworzyc semafora service_done");
+    exit(EXIT_FAILURE);
+}
 
-    // Inicjalizacja mutexów
-    if (pthread_mutex_init(&mutex_poczekalnia, NULL) != 0) {
-        perror("Nie udalo sie stworzyc mutexa mutex_poczekalnia");
-        exit(EXIT_FAILURE);
-    }
-    if (pthread_mutex_init(&kasa_mutex, NULL) != 0) {
-        perror("Nie udalo sie stworzyc mutexa kasa_mutex");
-        exit(EXIT_FAILURE);
-    }
+// Inicjalizacja mutexów
+if (pthread_mutex_init(&mutex_poczekalnia, NULL) != 0) {  // Mutex domyślnie prywatny dla wątków
+    perror("Nie udalo sie stworzyc mutexa mutex_poczekalnia");
+    exit(EXIT_FAILURE);
+}
+if (pthread_mutex_init(&kasa_mutex, NULL) != 0) {  // Mutex domyślnie prywatny dla wątków
+    perror("Nie udalo sie stworzyc mutexa kasa_mutex");
+    exit(EXIT_FAILURE);
+}
 
     // Sprawdzamy godzinę rozpoczęcia symulacji
     sprawdz_godzine_startu();
@@ -106,8 +105,9 @@ int main() {
         *id = i;
         pthread_create(&klienci[i], NULL, klient_praca, (void *)id);
 
-        // Losowy czas oczekiwania przed przyjściem kolejnego klienta (od 1 do 3 sekund)
-        sleep(1);
+        // Losowy czas oczekiwania przed przyjściem kolejnego klienta (od 4 do 10 sekund)
+        int czas_oczekiwania = rand() % 7 + 4; 
+        sleep(czas_oczekiwania);
     }
 
     // Czekamy na zakończenie wszystkich klientów

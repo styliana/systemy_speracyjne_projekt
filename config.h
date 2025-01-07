@@ -15,7 +15,7 @@
 #define LICZBA_MIEJSC_W_POCZEKALNI 5  // Liczba miejsc w poczekalni
 
 // Deklaracje zmiennych globalnych
-extern sem_t fotele, klient, service_done;  // Semafory
+extern sem_t fotele, klient, service_done;  // Semafory 
 extern pthread_mutex_t kasa_mutex, mutex_poczekalnia; // Mutexy
 extern pthread_cond_t cond_fryzjer, cond_klient; // Zmienne warunkowe
 extern int klienci_w_poczekalni;   // Liczba klientów w poczekalni
