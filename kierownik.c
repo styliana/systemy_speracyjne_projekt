@@ -6,6 +6,7 @@
 
 // Funkcja do zamykania salonu
 void zamknij_salon() {
+    praca_trwa = 0;  // Ustawiamy flagę, aby zakończyć pracę salonu
     kill(0, SIGUSR1);  // Wysyła sygnał do wszystkich procesów
 }
 

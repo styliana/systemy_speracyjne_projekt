@@ -1,5 +1,6 @@
 #include "config.h"
 #include "klient.h"
+#include "kierownik.h"
 #include "fryzjer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@ int kasa_20zl = 10;  // 10 dwudziestozłotówek
 int start_hour = 8;  // Domyślna godzina rozpoczęcia
 int godzina = 8;     // Początkowa godzina
 int minuta = 0;      // Początkowa minuta
+int liczba_obsluzonych_klientow = 0;
 
 pthread_t klienci[MAX_KLIENTOW];
 pthread_t fryzjerzy[MAX_FRYZJEROW];
@@ -52,6 +54,12 @@ void *symuluj_czas(void *arg) {
             printf("\033[0;36m[INFO]: Aktualna godzina: %02d:%02d\033[0m\n", godzina, minuta);
             int suma = kasa[0] * 10 + kasa[1] * 20 + kasa[2] * 50;
             printf("\033[0;36m[INFO]: Stan kasy: %d zł.\033[0m\n", suma);  // Wyświetlenie stanu kasy
+        }
+
+        if (liczba_obsluzonych_klientow >= MAX_KLIENTOW) {
+            zamknij_salon();  // Zamknięcie salonu po obsłużeniu 100 klientów
+            printf("\033[0;36m[INFO]: Dzisiaj obsłużyliśmy 100 klientów, jesteśmy bogaci! Zamykamy salon!\033[0m\n");
+            break;
         }
     }
 
