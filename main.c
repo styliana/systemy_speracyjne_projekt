@@ -9,57 +9,65 @@
 #include <unistd.h>
 #include <time.h>
 
-int kasa_10zl = 10;  // 10 dziesięciozłotówek
-int kasa_20zl = 10;  // 10 dwudziestozłotówek
 int start_hour = 8;  // Domyślna godzina rozpoczęcia
 int godzina = 8;     // Początkowa godzina
 int minuta = 0;      // Początkowa minuta
-int liczba_obsluzonych_klientow = 0;
 
 pthread_t klienci[MAX_KLIENTOW];
 pthread_t fryzjerzy[MAX_FRYZJEROW];
 
+sem_t fotele;
+
+// Kolejki komunikatów
+int poczekalnia, salon;
+
 int salon_otwarty = 1;  // Flaga, która kontroluje, czy salon jest otwarty
 
-pthread_mutex_t mutex_poczekalnia;
-pthread_mutex_t kasa_mutex;
-sem_t fotel, service_done;
+int kasa[3] = {10, 10, 0};  // 10 banknotów 10 zł, 10 banknotów 20 zł, 0 banknotów 50 zł
+pthread_mutex_t kasa_mutex, poczekalnia_mutex;
+
+void print_stan_kasy() {
+    pthread_mutex_lock(&kasa_mutex);
+    printf("\033[0;36m[INFO]: Stan kasy: %d zł.\033[0m\n", suma_banknoty(kasa));
+    pthread_mutex_unlock(&kasa_mutex);
+}
 
 void *symuluj_czas(void *arg) {
     int godzina_startu = *(int *)arg;
     godzina = godzina_startu;  // Inicjalizacja godziny na wartość podaną przez użytkownika
     minuta = 0;  // Zaczynamy od początku (00 minut)
 
-    while (salon_otwarty) {
-        usleep(1000000);  // Symulacja upływu 1 sekundy
+    while (1) {
+        sleep(1);
 
         minuta++;
         if (minuta == 60) {
             minuta = 0;
             godzina++;
+            // Zamknięcie
             if (godzina == 17) {
                 printf("\033[0;36m[INFO]: Minął czas pracy salonu, zamknięcie salonu.\033[0m\n");
 
                 // Wyświetlenie końcowego stanu kasy po dniu
-                int suma = kasa[0] * 10 + kasa[1] * 20 + kasa[2] * 50;
-                printf("\033[0;36m[INFO]: Ostateczna suma w kasie: %d zł.\033[0m\n", suma);
+                print_stan_kasy();
 
                 salon_otwarty = 0;  // Zamykamy salon
-                break;
+            }
+            // Otwarcie
+            if (godzina == 8) {
+                printf("\033[0;36m[INFO]: Otwarcie salonu.\033[0m\n");
+                print_stan_kasy();
+
+                salon_otwarty = 1;  // Otwieramy salon
             }
         }
 
         // Co 20 minut wyświetlamy godzinę oraz stan kasy
         if (minuta % 20 == 0 || (godzina == godzina_startu && minuta == 0)) {
             printf("\033[0;36m[INFO]: Aktualna godzina: %02d:%02d\033[0m\n", godzina, minuta);
-            int suma = kasa[0] * 10 + kasa[1] * 20 + kasa[2] * 50;
-            printf("\033[0;36m[INFO]: Stan kasy: %d zł.\033[0m\n", suma);  // Wyświetlenie stanu kasy
-        }
-
-        if (liczba_obsluzonych_klientow >= MAX_KLIENTOW) {
-            zamknij_salon();  // Zamknięcie salonu po obsłużeniu 100 klientów
-            printf("\033[0;36m[INFO]: Dzisiaj obsłużyliśmy 100 klientów, jesteśmy bogaci! Zamykamy salon!\033[0m\n");
-            break;
+            print_stan_kasy();  // Wyświetlenie stanu kasy
+        } else {
+            printf("\033[0;36m[INFO]: Aktualna godzina: %02d:%02d\033[0m\n", godzina, minuta);
         }
     }
 
@@ -71,25 +79,37 @@ void *symuluj_czas(void *arg) {
 int main() {
     srand(time(NULL));
 
-    // Inicjalizacja semaforów
-if (sem_init(&fotele, 0, MAX_FOTELI) != 0) {  // 0 - semafor prywatny dla wątków
-    perror("Nie udalo sie stworzyc semafora fotel");
-    exit(EXIT_FAILURE);
-}
-if (sem_init(&service_done, 0, 0) != 0) {  // 0 - semafor prywatny dla wątków
-    perror("Nie udalo sie stworzyc semafora service_done");
-    exit(EXIT_FAILURE);
-}
+    // Inicjalizacja kolejek komunikatów
+    key_t klucz;
+    klucz = ftok("/tmp/",'p');
+    if ((poczekalnia = msgget(klucz, IPC_CREAT | 0600)) == -1)
+    {
+        perror("Nie udalo sie stworzyc kolejki komunikatów poczekalnia");
+        exit(EXIT_FAILURE);
+    }
 
-// Inicjalizacja mutexów
-if (pthread_mutex_init(&mutex_poczekalnia, NULL) != 0) {  // Mutex domyślnie prywatny dla wątków
-    perror("Nie udalo sie stworzyc mutexa mutex_poczekalnia");
-    exit(EXIT_FAILURE);
-}
-if (pthread_mutex_init(&kasa_mutex, NULL) != 0) {  // Mutex domyślnie prywatny dla wątków
-    perror("Nie udalo sie stworzyc mutexa kasa_mutex");
-    exit(EXIT_FAILURE);
-}
+    klucz = ftok("/tmp/",'s');
+    if ((salon = msgget(klucz, IPC_CREAT | 0600)) == -1)
+    {
+        perror("Nie udalo sie stworzyc kolejki komunikatów salon");
+        exit(EXIT_FAILURE);
+    }
+
+    // Inicjalizacja semaforów
+    if (sem_init(&fotele, 0, MAX_FOTELI) != 0) {  // Semafor prywatny dla wątków
+        perror("Nie udalo sie stworzyc semafora fotele");
+        exit(EXIT_FAILURE);
+    }
+
+    // Inicjalizacja mutexów
+    if (pthread_mutex_init(&kasa_mutex, NULL) != 0) {  // Mutex domyślnie prywatny dla wątków
+        perror("Nie udalo sie stworzyc mutexa kasa_mutex");
+        exit(EXIT_FAILURE);
+    }
+    if (pthread_mutex_init(&poczekalnia_mutex, NULL) != 0) {  // Mutex domyślnie prywatny dla wątków
+        perror("Nie udalo sie stworzyc mutexa kasa_mutex");
+        exit(EXIT_FAILURE);
+    }
 
     // Sprawdzamy godzinę rozpoczęcia symulacji
     sprawdz_godzine_startu();
@@ -105,17 +125,16 @@ if (pthread_mutex_init(&kasa_mutex, NULL) != 0) {  // Mutex domyślnie prywatny 
 
     // Tworzymy wątki klientów, sprawdzając, czy salon jest otwarty
     for (int i = 0; i < MAX_KLIENTOW; i++) {
-        if (!salon_otwarty) {
-            break;  // Zatrzymujemy tworzenie nowych klientów, jeśli salon jest już zamknięty
-        }
-        
-        int *id = malloc(sizeof(int));
-        *id = i;
-        pthread_create(&klienci[i], NULL, klient_praca, (void *)id);
+        pthread_create(&klienci[i], NULL, klient_praca, (void *)(long)i);
 
         // Losowy czas oczekiwania przed przyjściem kolejnego klienta (od 4 do 10 sekund)
-        int czas_oczekiwania = rand() % 7 + 4; 
+        int czas_oczekiwania = rand() % 7 + 4;
         sleep(czas_oczekiwania);
+    }
+
+    // Można wysyłać sygnały lub zakończyć program
+    while (1) {
+        // scanf();
     }
 
     // Czekamy na zakończenie wszystkich klientów
@@ -132,10 +151,11 @@ if (pthread_mutex_init(&kasa_mutex, NULL) != 0) {  // Mutex domyślnie prywatny 
     pthread_join(symulacja_czasu, NULL);
 
     // Czyszczenie zasobów
-    sem_destroy(&fotel);
-    sem_destroy(&service_done);
-    pthread_mutex_destroy(&mutex_poczekalnia);
+    msgctl(poczekalnia, IPC_RMID, NULL);
+    msgctl(salon, IPC_RMID, NULL);
+    sem_destroy(&fotele);
     pthread_mutex_destroy(&kasa_mutex);
+    pthread_mutex_destroy(&poczekalnia_mutex);
 
     return 0;
 }
