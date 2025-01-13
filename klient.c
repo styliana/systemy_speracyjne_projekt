@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <errno.h>
 
 // static volatile sig_atomic_t sygnal_do_wyjscia = 0;
 // static int w_salonie = 0;
@@ -21,7 +22,7 @@ void *klient_praca(void *arg) {
 
     id = (long)arg;  // ID klienta
 
-    // DO ZROBIENIA -- zmiany dot sygnalow od kierownika
+    // DO ZRObienia: ?
     // struct sigaction sa;
     // sa.sa_handler = sygnal_2;
     // sigemptyset(&sa.sa_mask);
@@ -54,12 +55,9 @@ void *klient_praca(void *arg) {
 
 void do_salonu(long id) {
     unsigned long ja, fryzjer_id;
-    struct komunikat_poczekalnia kom_poczekalnia;
-    struct komunikat_salon kom_salon;
+    struct komunikat kom;
 
     ja = pthread_self();
-    kom_poczekalnia.mtype = KOMUNIKAT_TYP;
-    kom_poczekalnia.klient_id = ja;
 
     // Klient idzie do poczekalni
     if (!salon_otwarty) {
@@ -67,41 +65,44 @@ void do_salonu(long id) {
     } else {
         printf("\033[0;32m[KLIENT %ld]: Przyszedłem do salonu, jestem %ld.\033[0m\n", id, ja);
 
-        // Sprawdzamy, czy jest dostępne miejsce w poczekalni
-        struct msqid_ds buf;
-        pthread_mutex_lock(&poczekalnia_mutex);
-        if (msgctl(poczekalnia, IPC_STAT, &buf) == -1) {
-            perror("Nie udało sie sprawdzić poczekalni");
-            exit(EXIT_FAILURE);
-        }
-
         // Jeśli jest miejsce, klient siada w poczekalni
-        if (buf.msg_qnum < LICZBA_MIEJSC_W_POCZEKALNI) {
+        int wolne = sem_trywait(&poczekalnia);
+
+
+        if (wolne == 0) {
             printf("\033[0;32m[KLIENT %ld]: Siadam w poczekalni.\033[0m\n", id);
-            wyslij_komunikat_poczekalnia(&kom_poczekalnia);
+
+            int stan_poczekalni;
+            sem_getvalue(&poczekalnia, &stan_poczekalni);
+            printf("\033[0;32m[KLIENT %ld]: Widzę %d jeszcze wolnych miejsc w poczekalni.\033[0m\n", id, stan_poczekalni);
+            
+            kom.mtype = KOMUNIKAT_POCZEKALNIA;
+            kom.podpis = ja;
+            wyslij_komunikat(&kom);
             // w_salonie = 1;
-            pthread_mutex_unlock(&poczekalnia_mutex);
 
             // Czeka na komunikat od fryzjera, żeby usiąść na fotelu
-            odbierz_komunikat_salon(&kom_salon, ja);
+            odbierz_komunikat(&kom, ja);
+            
+            // Zwalnia miejsce w poczekalni i przechodzi do płacenia
+            sem_post(&poczekalnia);
 
-            fryzjer_id = kom_salon.podpis;
-            printf("\033[0;32m[KLIENT %ld]: fryzjer %ld.\033[0m\n", id, fryzjer_id);
+            fryzjer_id = kom.podpis; // zapisuje id fryzjera
+            printf("\033[0;32m[KLIENT %ld]: Zawołał mnie fryzjer %ld.\033[0m\n", id, fryzjer_id);
 
-            int cena = kom_salon.msg[0];
-            printf("\033[0;32m[KLIENT %ld]: cena %d.\033[0m\n", id, cena);
+            // Losowanie nadpłaty
+            int cena = kom.msg[0];
             int nadwyzka = (rand() % 4) * 10;  // Wartości 0, 10, 20, 30
-            printf("\033[0;32m[KLIENT %ld]: nadwyzka %d.\033[0m\n", id, nadwyzka);
             int kwota_do_zaplaty = cena + nadwyzka;  // Kwota, którą klient płaci (z nadwyżką)
             int klient_dal_50 = 0, klient_dal_20 = 0, klient_dal_10 = 0;  // Liczniki dla każdego nominału
             int suma_zaplacona = 0;  // Zmienna do przechowywania sumy zapłaconej przez klienta
 
             // Przygotuj komunikat do fryzjera
-            kom_salon.mtype = fryzjer_id;
-            kom_salon.podpis = ja;
-            kom_salon.msg[0] = 0;
-            kom_salon.msg[1] = 0;
-            kom_salon.msg[2] = 0;
+            kom.mtype = fryzjer_id;
+            kom.podpis = ja;
+            kom.msg[0] = 0;
+            kom.msg[1] = 0;
+            kom.msg[2] = 0;
 
             while (kwota_do_zaplaty > 0) {  // Dopóki klient nie zapłaci pełnej kwoty
                 int nominal = rand() % 3;  // Losowanie nominalu (0 - 10 zł, 1 - 20 zł, 2 - 50 zł)
@@ -110,22 +111,22 @@ void do_salonu(long id) {
                     kwota_do_zaplaty -= 10;  // Zmniejsz resztę do zapłaty
                     klient_dal_10++;  // Zwiększ licznik 10zł
                     suma_zaplacona += 10;  // Dodaj 10zł do zapłaconej kwoty
-                    kom_salon.msg[0]++; // Przekaż fryzjerowi
+                    kom.msg[0]++; // Przekaż fryzjerowi
                 } else if (nominal == 1 && kwota_do_zaplaty >= 20) {
                     kwota_do_zaplaty -= 20;  // Zmniejsz resztę do zapłaty
                     klient_dal_20++;  // Zwiększ licznik 20zł
                     suma_zaplacona += 20;  // Dodaj 20zł do zapłaconej kwoty
-                    kom_salon.msg[1]++; // Przekaż fryzjerowi
+                    kom.msg[1]++; // Przekaż fryzjerowi
                 } else if (nominal == 2 && kwota_do_zaplaty >= 50) {
                     kwota_do_zaplaty -= 50;  // Zmniejsz resztę do zapłaty
                     klient_dal_50++;  // Zwiększ licznik 50zł
                     suma_zaplacona += 50;  // Dodaj 50zł do zapłaconej kwoty
-                    kom_salon.msg[2]++; // Przekaż fryzjerowi
+                    kom.msg[2]++; // Przekaż fryzjerowi
                 }
             }
 
             // Zapłać fryzjerowi
-            wyslij_komunikat_salon(&kom_salon);
+            wyslij_komunikat(&kom);
 
             // Komunikaty o zapłacie
             printf("\033[0;32m[KLIENT %ld]: Zapłacono %d zł (w tym nadwyżka %d zł) w nominałach:\033[0m\n", id, suma_zaplacona, nadwyzka);
@@ -134,19 +135,18 @@ void do_salonu(long id) {
             if (klient_dal_10 > 0) printf("\033[0;32m[KLIENT %ld]: %d x 10zł\033[0m\n", id, klient_dal_10);
 
             // Czekaj na zakończenie usługi i wydanie reszty
-            odbierz_komunikat_salon(&kom_salon, ja);
+            odbierz_komunikat(&kom, ja);
 
             // Sprawdzenie reszty
-            int reszta = suma_banknoty(kom_salon.msg);
+            int reszta = suma_banknoty(kom.msg);
             if (reszta == nadwyzka) {
-                printf("\033[0;32m[KLIENT %ld]: Otrzymałem resztę %d zł.\033[0m\n", id, reszta);
+                printf("\033[0;32m[KLIENT %ld]: Otrzymałem odpowiednią resztę %d zł.\033[0m\n", id, reszta);
             } else {
                 printf("\033[0;32m[KLIENT %ld]: Otrzymałem resztę %d zł, ale powinienem otrzymać %d zł.\033[0m\n", id, reszta, nadwyzka);
             }
 
         } else {
             // Jeśli poczekalnia pełna, klient wychodzi
-            pthread_mutex_unlock(&poczekalnia_mutex);
             printf("\033[0;32m[KLIENT %ld]: Poczekalnia pełna, wracam do pracy.\033[0m\n", id);
         }
     }
