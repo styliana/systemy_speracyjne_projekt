@@ -1,94 +1,52 @@
-#include "config.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <errno.h>
+#include "klient.h"
 
-// static volatile sig_atomic_t sygnal_do_wyjscia = 0;
-// static int w_salonie = 0;
+long ja;
+int poczekalnia; // Semafor
+int kolejka; // Kolejka komunikatów
+int zajmuje_poczekalnie = 0;
 
-static void sygnal_2(int sig) {
-    // sygnal_do_wyjscia = 1;
-}
-
-void do_salonu(long id);
-void praca();
-
-void *klient_praca(void *arg) {
-    long id;
-
-    id = (long)arg;  // ID klienta
-
-    // DO ZRObienia: ?
-    // struct sigaction sa;
-    // sa.sa_handler = sygnal_2;
-    // sigemptyset(&sa.sa_mask);
-    // sa.sa_flags = 0;
-    // sigaction(SIGUSR2, &sa, NULL);  // Obsługa SIGUSR2
-
-    // v2
-    if (signal(SIGUSR2, sygnal_2) == SIG_ERR)
+int main() {
+    ja = getpid();
+    if (signal(SIGINT, sygnal_2) == SIG_ERR)
     {
         perror("Blad obslugi sygnalu");
         exit(EXIT_FAILURE);
     }
 
-    while (1) {
-        // if (sygnal_do_wyjscia) {
-        //     sygnal_do_wyjscia = 0;
-        //     if (w_salonie) {
-        //         printf("\033[0;32m[KLIENT %ld]: Otrzymałem sygnał do opuszczenia salonu, wracam do pracy.\033[0m\n", id);
-        //         praca();
-        //     }
-        // } else {
-            do_salonu(id);
-            praca();
-        // }
-    }
+    long fryzjer_id;
+    key_t klucz;
 
-    fprintf(stderr, "Wypadłem z pętli klienta %ld", pthread_self());
-    return NULL;
-}
-
-void do_salonu(long id) {
-    unsigned long ja, fryzjer_id;
     struct komunikat kom;
+    klucz = ftok(KLUCZ_PATH, KLUCZ_CHAR_KOLEJKA);
+    kolejka = utworz_kolejke_komunikatow(klucz);
 
-    ja = pthread_self();
+    klucz = ftok(KLUCZ_PATH,KLUCZ_CHAR_SEM_KASA);
+    poczekalnia = utworz_semafor(klucz);
 
-    // Klient idzie do poczekalni
-    if (!salon_otwarty) {
-        printf("\033[0;32m[KLIENT %ld]: Przyszedłem do salonu, ale jest zamknięte, więc wracam do pracy.\033[0m\n", id);
-    } else {
-        printf("\033[0;32m[KLIENT %ld]: Przyszedłem do salonu, jestem %ld.\033[0m\n", id, ja);
+    while (1) {
+        // Klient idzie do poczekalni
+        printf("\033[0;32m[KLIENT %ld]: Przyszedłem do salonu.\033[0m\n", ja);
 
         // Jeśli jest miejsce, klient siada w poczekalni
-        int wolne = sem_trywait(&poczekalnia);
-
+        int wolne = sem_p_nowait(poczekalnia, 1);
 
         if (wolne == 0) {
-            printf("\033[0;32m[KLIENT %ld]: Siadam w poczekalni.\033[0m\n", id);
+            zajmuje_poczekalnie = 1;
+            printf("\033[0;32m[KLIENT %ld]: Siadam w poczekalni.\033[0m\n", ja);
 
-            int stan_poczekalni;
-            sem_getvalue(&poczekalnia, &stan_poczekalni);
-            printf("\033[0;32m[KLIENT %ld]: Widzę %d jeszcze wolnych miejsc w poczekalni.\033[0m\n", id, stan_poczekalni);
-            
             kom.mtype = KOMUNIKAT_POCZEKALNIA;
             kom.podpis = ja;
-            wyslij_komunikat(&kom);
-            // w_salonie = 1;
+            wyslij_komunikat(kolejka, &kom);
 
             // Czeka na komunikat od fryzjera, żeby usiąść na fotelu
-            odbierz_komunikat(&kom, ja);
+            odbierz_komunikat(kolejka, &kom, ja);
             
             // Zwalnia miejsce w poczekalni i przechodzi do płacenia
-            sem_post(&poczekalnia);
+            sem_v(poczekalnia, 1);
+            zajmuje_poczekalnie = 0;
 
             fryzjer_id = kom.podpis; // zapisuje id fryzjera
-            printf("\033[0;32m[KLIENT %ld]: Zawołał mnie fryzjer %ld.\033[0m\n", id, fryzjer_id);
+            printf("\033[0;32m[KLIENT %ld]: Zawołał mnie fryzjer %ld.\033[0m\n", ja, fryzjer_id);
 
             // Losowanie nadpłaty
             int cena = kom.msg[0];
@@ -126,33 +84,43 @@ void do_salonu(long id) {
             }
 
             // Zapłać fryzjerowi
-            wyslij_komunikat(&kom);
+            wyslij_komunikat(kolejka, &kom);
 
             // Komunikaty o zapłacie
-            printf("\033[0;32m[KLIENT %ld]: Zapłacono %d zł (w tym nadwyżka %d zł) w nominałach:\033[0m\n", id, suma_zaplacona, nadwyzka);
-            if (klient_dal_50 > 0) printf("\033[0;32m[KLIENT %ld]: %d x 50zł\033[0m\n", id, klient_dal_50);
-            if (klient_dal_20 > 0) printf("\033[0;32m[KLIENT %ld]: %d x 20zł\033[0m\n", id, klient_dal_20);
-            if (klient_dal_10 > 0) printf("\033[0;32m[KLIENT %ld]: %d x 10zł\033[0m\n", id, klient_dal_10);
+            printf("\033[0;32m[KLIENT %ld]: Zapłacono %d zł (w tym nadwyżka %d zł) w nominałach:\033[0m\n", ja, suma_zaplacona, nadwyzka);
+            if (klient_dal_50 > 0) printf("\033[0;32m[KLIENT %ld]: %d x 50zł\033[0m\n", ja, klient_dal_50);
+            if (klient_dal_20 > 0) printf("\033[0;32m[KLIENT %ld]: %d x 20zł\033[0m\n", ja, klient_dal_20);
+            if (klient_dal_10 > 0) printf("\033[0;32m[KLIENT %ld]: %d x 10zł\033[0m\n", ja, klient_dal_10);
 
             // Czekaj na zakończenie usługi i wydanie reszty
-            odbierz_komunikat(&kom, ja);
+            odbierz_komunikat(kolejka, &kom, ja);
 
             // Sprawdzenie reszty
             int reszta = suma_banknoty(kom.msg);
             if (reszta == nadwyzka) {
-                printf("\033[0;32m[KLIENT %ld]: Otrzymałem odpowiednią resztę %d zł.\033[0m\n", id, reszta);
+                printf("\033[0;32m[KLIENT %ld]: Otrzymałem odpowiednią resztę %d zł.\033[0m\n", ja, reszta);
             } else {
-                printf("\033[0;32m[KLIENT %ld]: Otrzymałem resztę %d zł, ale powinienem otrzymać %d zł.\033[0m\n", id, reszta, nadwyzka);
+                printf("\033[0;32m[KLIENT %ld]: Otrzymałem resztę %d zł, ale powinienem otrzymać %d zł.\033[0m\n", ja, reszta, nadwyzka);
             }
 
         } else {
             // Jeśli poczekalnia pełna, klient wychodzi
-            printf("\033[0;32m[KLIENT %ld]: Poczekalnia pełna, wracam do pracy.\033[0m\n", id);
+            printf("\033[0;32m[KLIENT %ld]: Nie mogę wejść do poczekalni, wracam do pracy.\033[0m\n", ja);
         }
+
+        // Praca losowy czas
+        sleep(rand() % 100 + 50);
     }
-    // w_salonie = 0;
+
+    fprintf(stderr, "Wypadłem z pętli klienta %ld", ja);
+    exit(EXIT_FAILURE);
 }
 
-void praca() {
-    sleep(rand() % 100 + 50);
+void sygnal_2(int sig) {
+    printf("\033[0;32m[KLIENT %ld]: Otrzymałem sygnał 2, żegnam.\033[0m\n", ja);
+    if (zajmuje_poczekalnie) {
+        printf("\033[0;32m[KLIENT %ld]: Zwalniam swoje miejsce w poczekalni.\033[0m\n", ja);
+        sem_v(poczekalnia, 1);
+    }
+    exit(EXIT_SUCCESS);
 }

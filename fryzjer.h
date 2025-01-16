@@ -1,6 +1,10 @@
-#ifndef FRYZJER_H
-#define FRYZJER_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include "config.h"
+#include "utils/pamiec_dzielona.h"
+#include "utils/kolejka_komunikatow.h"
+#include "utils/semafory.h"
 
-void *fryzjer_praca(void *arg);
-
-#endif // FRYZJER_H
+void sygnal_1(int sig);
