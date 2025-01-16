@@ -109,7 +109,7 @@ int main() {
         }
 
         // Praca losowy czas
-        sleep(rand() % 100 + 50);
+        sleep(rand() % 100 + 10);
     }
 
     fprintf(stderr, "Wypadłem z pętli klienta %ld", ja);

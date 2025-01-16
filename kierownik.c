@@ -80,9 +80,9 @@ int main() {
     // Możemy wysyłać sygnały lub zakończyć program
     char menu;
     while (menu != '3') {
-        printf("1 - zakończ frzjerów\n");
+        printf("1 - zakończ fryzjerów\n");
         printf("2 - zakończ klientów\n");
-        printf("3 - koniec");
+        printf("3 - koniec\n");
 
         while(scanf("%c", &menu) != 1);
         switch (menu)

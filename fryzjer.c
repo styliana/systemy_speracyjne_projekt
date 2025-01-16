@@ -28,7 +28,7 @@ int  main() {
     klucz = ftok(KLUCZ_PATH,KLUCZ_CHAR_SEM_KASA);
     kasa = utworz_semafor(klucz);
 
-    klucz = ftok(KLUCZ_PATH,KLUCZ_CHAR_SEM_KASA);
+    klucz = ftok(KLUCZ_PATH,KLUCZ_CHAR_PAMIEC);
     pamiec_id = utworz_pamiec_dzielona(klucz);
     pamiec = dolacz_pamiec_dzielona(pamiec_id);
 
