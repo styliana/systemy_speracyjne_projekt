@@ -63,7 +63,7 @@ void sem_v(int id, int n)
     {
         if (errno == EINTR)
         {
-            sem_p(id, n);
+            sem_p_nowait(id, n);
         }
         else
         {
@@ -97,4 +97,14 @@ int sem_p_nowait(int id, int n)
         }
     }
     return 0;
+}
+
+int sem_wartosc(int id) {
+    int res = semctl(id, 0, GETVAL);
+    if (res == -1)
+    {
+        perror("semctl GETVAL");
+        exit(EXIT_FAILURE);
+    }
+    return res;
 }

@@ -42,6 +42,9 @@ int main() {
     poczekalnia = utworz_semafor(klucz);
     ustaw_semafor(poczekalnia, MAX_POCZEKALNIA);
 
+    printf("\033[0;36m[INFO]: init poczekalnia: %d.\033[0m\n", sem_wartosc(poczekalnia));
+    printf("\033[0;36m[INFO]: init fotele: %d.\033[0m\n", sem_wartosc(fotele));
+
     // Inicjalizacja pamięci dzielonej
     klucz = ftok(KLUCZ_PATH,KLUCZ_CHAR_PAMIEC);
     pamiec_id = utworz_pamiec_dzielona(klucz);
@@ -73,8 +76,8 @@ int main() {
         }
 
         // Losowy czas oczekiwania przed przyjściem kolejnego klienta (od 4 do 10 sekund)
-        int czas_oczekiwania = rand() % 7 + 4;
-        // sleep(czas_oczekiwania);
+        int czas_oczekiwania = rand() % 3 + 1;
+        sleep(czas_oczekiwania);
     }
 
     // Możemy wysyłać sygnały lub zakończyć program
@@ -99,7 +102,7 @@ int main() {
             koniec(0);
             break;
         default:
-            printf("Niepoprawna opcja\n");
+            printf("inne - Niepoprawna opcja\n");
             break;
         }
     }
@@ -196,26 +199,29 @@ void *symuluj_czas(void *arg) {
         if (minuta == 60) {
             minuta = 0;
             godzina++;
-        }
-        // Otwarcie
-        else if (godzina == 8) {
-            printf("\033[0;36m[INFO]: Otwarcie salonu.\033[0m\n");
-            print_stan_kasy();
+            // Otwarcie
+            if (godzina == 8) {
+                printf("\033[0;36m[INFO]: Otwarcie salonu.\033[0m\n");
+                print_stan_kasy();
 
-            // Otwieramy salon
-            sem_v(fotele, MAX_FOTELI);
-            sem_v(poczekalnia, MAX_POCZEKALNIA);
-        }
-        else if (godzina == 24) {
-            godzina = 0;
+                // Otwieramy salon
+                sem_v(poczekalnia, MAX_POCZEKALNIA);
+            }
+            else if (godzina == 24) {
+                godzina = 0;
+            }
         }
         // Zamknięcie
-        else if (godzina == 16 && minuta == 30) {
-            printf("\033[0;36m[INFO]: Zamknięcie salonu za 30 min, nie przyjmujemy już klientów.\033[0m\n");
+        if (godzina == 16 && minuta == 30) {
+            printf("\033[0;36m[INFO]: Zamknięcie salonu za 30 min, zaraz zamykamy.\033[0m\n");
 
             // Zamykamy salon
             sem_p(poczekalnia, MAX_POCZEKALNIA);
-            sem_p(fotele, MAX_FOTELI);
+
+            printf("\033[0;36m[INFO]: Zamknięto poczekalnię.\033[0m\n");
+
+            printf("\033[0;36m[INFO]: poczekalnia: %d.\033[0m\n", sem_wartosc(poczekalnia));
+            printf("\033[0;36m[INFO]: fotele: %d.\033[0m\n", sem_wartosc(fotele));
 
             // Wyświetlenie końcowego stanu kasy po dniu
             print_stan_kasy();
@@ -224,9 +230,12 @@ void *symuluj_czas(void *arg) {
         // Co 5 minut wyświetlamy godzinę
         if (minuta % 5 == 0) {
             printf("\033[0;36m[INFO]: Aktualna godzina: %02d:%02d\033[0m\n", godzina, minuta);
-        } else if (minuta % 20 == 0) {
-        // Co 20 minut wyświetlamy godzinę oraz stan kasy
-            printf("\033[0;36m[INFO]: Aktualna godzina: %02d:%02d\033[0m\n", godzina, minuta);
+            printf("\033[0;36m[INFO]: poczekalnia: %d.\033[0m\n", sem_wartosc(poczekalnia));
+            printf("\033[0;36m[INFO]: fotele: %d.\033[0m\n", sem_wartosc(fotele));
+        }
+        
+        if (minuta % 20 == 0) {
+        // Co 20 minut wyświetlamy stan kasy
             print_stan_kasy();  // Wyświetlenie stanu kasy
         }
     }
@@ -252,9 +261,9 @@ void sprawdz_godzine_startu(int* godzina, int* minuta) {
             continue;
         }
 
-        if (godzina_startu < 8 || godzina_startu >= 17) {
+        if (godzina_startu < 8 || godzina_startu > 16) {
             // TODO:
-            printf("\033[0;31m[ERROR]: Godzina %d:%02d jest poza godzinami pracy salonu (8:00 - 17:00).\033[0m\n", godzina_startu, minuta_startu);
+            printf("\033[0;31m[ERROR]: Godzina %d:%02d jest niedozwolona (8:00 - 16:00).\033[0m\n", godzina_startu, minuta_startu);
             continue;
         }
 

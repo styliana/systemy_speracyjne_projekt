@@ -20,7 +20,7 @@ int main() {
     klucz = ftok(KLUCZ_PATH, KLUCZ_CHAR_KOLEJKA);
     kolejka = utworz_kolejke_komunikatow(klucz);
 
-    klucz = ftok(KLUCZ_PATH,KLUCZ_CHAR_SEM_KASA);
+    klucz = ftok(KLUCZ_PATH,KLUCZ_CHAR_SEM_POCZEKALNIA);
     poczekalnia = utworz_semafor(klucz);
 
     while (1) {
@@ -33,6 +33,7 @@ int main() {
         if (wolne == 0) {
             zajmuje_poczekalnie = 1;
             printf("\033[0;32m[KLIENT %ld]: Siadam w poczekalni.\033[0m\n", ja);
+            printf("\033[0;32m[KLIENT %ld]: Jest jeszcze %d miejsc.\033[0m\n", ja, sem_wartosc(poczekalnia));
 
             kom.mtype = KOMUNIKAT_POCZEKALNIA;
             kom.podpis = ja;
@@ -43,6 +44,7 @@ int main() {
             
             // Zwalnia miejsce w poczekalni i przechodzi do płacenia
             sem_v(poczekalnia, 1);
+            printf("\033[0;32m[KLIENT %ld]: Wychodzę z poczekalni, widziałem tam %d miejsc.\033[0m\n", ja, sem_wartosc(poczekalnia));
             zajmuje_poczekalnie = 0;
 
             fryzjer_id = kom.podpis; // zapisuje id fryzjera
