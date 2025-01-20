@@ -1,13 +1,22 @@
 #include "fryzjer.h"
 
 long ja;
+long klient_id;
 int fotele, kasa; // Semafory
 int kolejka; // Kolejka komunikatów
 int pamiec_id; // Pamięć dzielona
 int *pamiec;
-int zajmuje_fotel = 0, zajmuje_kase = 0;
+volatile sig_atomic_t zajmuje_fotel = 0, zajmuje_kase = 0;
+
+// Flagi postępu działania programu, bezpiecznie dostępne przy obsłudze sygnału
+volatile sig_atomic_t odebralem_komunikat_poczekalnia = 0;
+volatile sig_atomic_t wyslalem_cene = 0;
+volatile sig_atomic_t odebralem_zaplate = 0;
+volatile sig_atomic_t wyslalem_reszte = 0;
+volatile sig_atomic_t otrzymano_sygnal_do_wyjscia = 0;
 
 int  main() {
+    srand(time(NULL));
     ja = getpid();
     if (signal(SIGHUP, sygnal_1) == SIG_ERR)
     {
@@ -15,10 +24,9 @@ int  main() {
         exit(EXIT_FAILURE);
     }
 
-    long klient_id;
+    struct komunikat kom;
     key_t klucz;
 
-    struct komunikat kom;
     klucz = ftok(KLUCZ_PATH, KLUCZ_CHAR_KOLEJKA);
     kolejka = utworz_kolejke_komunikatow(klucz);
 
@@ -33,14 +41,27 @@ int  main() {
     pamiec = dolacz_pamiec_dzielona(pamiec_id);
 
     while (1) {
+        if (otrzymano_sygnal_do_wyjscia) {
+            break;
+        }
+
         // Czeka na klienta
-        odbierz_komunikat(kolejka, &kom, KOMUNIKAT_POCZEKALNIA);
+        if (odebralem_komunikat_poczekalnia != 1) {
+            // printf("\033[0;34m[FRYZJER %ld]: odbieram komunikat poczekalnia\033[0m\n", ja);
+            odbierz_komunikat(kolejka, &kom, KOMUNIKAT_POCZEKALNIA);
+            odebralem_komunikat_poczekalnia = 1;
+            // printf("\033[0;34m[FRYZJER %ld]: odebralem komunikat poczekalnia\033[0m\n", ja);
+        }
 
         // Czeka z klientem na fotel
         klient_id = kom.podpis;
 
-        sem_p(fotele, 1); // Zajmujemy fotel
-        zajmuje_fotel = 1;
+        if (!zajmuje_fotel) {
+            sem_p(fotele, 1); // Zajmujemy fotel
+            zajmuje_fotel = 1;
+        }
+        printf("\033[0;34m[FRYZJER %ld]: Udało się zająć fotel.\033[0m\n", ja);
+
 
         // Losowa cena strzyżenia w pełnych dziesiątkach (od 30 do 100 zł)
         int cena_uslugi = (rand() % 8 + 3) * 10;
@@ -51,10 +72,20 @@ int  main() {
         kom.mtype = klient_id;
         kom.podpis = ja;
         kom.msg[0] = cena_uslugi;
-        wyslij_komunikat(kolejka, &kom);
+        if (wyslalem_cene != 1) {
+            // printf("\033[0;34m[FRYZJER %ld]: wysylam komunikat cena\033[0m\n", ja);
+            wyslij_komunikat(kolejka, &kom);
+            // printf("\033[0;34m[FRYZJER %ld]: wyslalem komunikat cena\033[0m\n", ja);
+            wyslalem_cene = 1;
+        }
 
         // Odbiera zapłatę i wkłada do wspólnej kasy
-        odbierz_komunikat(kolejka, &kom, ja);
+        if (odebralem_zaplate != 1) {
+            // printf("\033[0;34m[FRYZJER %ld]: odbieram komunikat zaplata\033[0m\n", ja);
+            odbierz_komunikat(kolejka, &kom, ja);
+            // printf("\033[0;34m[FRYZJER %ld]: odebralem komunikat zaplata\033[0m\n", ja);
+            odebralem_zaplate = 1;
+        }
         
         sem_p(kasa, 1);
         zajmuje_kase = 1;
@@ -65,17 +96,20 @@ int  main() {
         zajmuje_kase = 0;
 
         int zaplacono = suma_banknoty(kom.msg);
-        int reszta =  zaplacono - cena_uslugi;
+        int reszta = zaplacono - cena_uslugi;
         printf("\033[0;34m[FRYZJER %ld]: Otrzymałem od klienta %ld o zapłatę %d zł za strzyżenie, nadwyzka: %d.\033[0m\n", ja, klient_id, zaplacono, reszta);
 
         // Obsługuje klienta
         printf("\033[0;34m[FRYZJER %ld]: Obsługuję klienta.\033[0m\n", ja);
-        sleep(CZAS_USLUGI);  // Czas obsługi
+        sleep(CZAS_USLUGI + rand()%3);  // Czas obsługi
 
         // Zakończenie obsługi klienta
         printf("\033[0;34m[FRYZJER %ld]: Zakończyłem strzyżenie klienta, zwalniam fotel.\033[0m\n", ja);
-        sem_v(fotele, 1);
-        zajmuje_fotel = 0;
+        if (zajmuje_fotel) {
+            sem_v(fotele, 1);
+            zajmuje_fotel = 0;
+        }
+        printf("\033[0;34m[FRYZJER %ld]: Udało się zwolnić fotel.\033[0m\n", ja);
 
         // Przygotuj komunikat z resztą dla klienta
         kom.mtype = klient_id;
@@ -87,7 +121,7 @@ int  main() {
             sem_p(kasa, 1);
             zajmuje_kase = 1;
             
-            //kasa[0] = 0; // TEST BRAKU BANKNOTÓW ZALICZONY
+            // pamiec[0] = 0; // TEST BRAKU BANKNOTÓW ZALICZONY
             
             // Jeśli nadwyżka została zapłacona, wydaj resztę
             while (reszta > 0) {  // Dopóki reszta nie zostanie zapłacona
@@ -120,15 +154,51 @@ int  main() {
 
         // Przekazanie reszty
         printf("\033[0;34m[FRYZJER %ld]: Przekazuję klientowi %ld resztę %d zł.\033[0m\n", ja, klient_id, suma_banknoty(kom.msg));
-        wyslij_komunikat(kolejka, &kom);
+        if (wyslalem_reszte != 1) {
+            // printf("\033[0;34m[FRYZJER %ld]: wysylam komunikat reszta\033[0m\n", ja);
+            wyslij_komunikat(kolejka, &kom);
+            // printf("\033[0;34m[FRYZJER %ld]: wyslalem komunikat reszta\033[0m\n", ja);
+            wyslalem_reszte = 1;
+        }
+
+        // Reset flag
+        odebralem_komunikat_poczekalnia = 0;
+        wyslalem_cene = 0;
+        odebralem_zaplate = 0;
+        wyslalem_reszte = 0;
     }
 
-    fprintf(stderr, "Wypadłem z pętli fryzjera %ld", ja);
-    exit(EXIT_FAILURE);
+    zwolnij_zasoby();
+    printf("\033[0;34m[FRYZJER %ld]: Żegnam.\033[0m\n", ja);
 }
 
 void sygnal_1(int sig) {
-    printf("\033[0;34m[FRYZJER %ld]: Otrzymałem sygnał 1, żegnam.\033[0m\n", ja);
+    printf("\033[0;34m[FRYZJER %ld]: Otrzymałem sygnał 1.\033[0m\n", ja);
+
+    // Ustaw flagi
+    if (odebralem_komunikat_poczekalnia) {
+        otrzymano_sygnal_do_wyjscia = 1;
+        
+        if (wyslalem_cene != 1) {
+            wyslalem_cene = -1;
+
+        } else if (odebralem_zaplate != 1) {
+            odebralem_zaplate = -1;
+
+        } else if (wyslalem_reszte != 1) {
+            wyslalem_reszte = -1;
+        }
+    } else {
+        zwolnij_zasoby();
+        printf("\033[0;34m[FRYZJER %ld]: Żegnam.\033[0m\n", ja);
+        exit(EXIT_SUCCESS);
+    }
+    
+    printf("\033[0;34m[FRYZJER %ld]: Sygnał ustawił flagi.\033[0m\n", ja);
+}
+
+void zwolnij_zasoby() {
+    // Zwolnij semafory
     if (zajmuje_fotel) {
         printf("\033[0;34m[FRYZJER %ld]: Zwalniam fotel.\033[0m\n", ja);
         sem_v(fotele, 1);
@@ -137,6 +207,6 @@ void sygnal_1(int sig) {
         printf("\033[0;34m[FRYZJER %ld]: Zwalniam kasę.\033[0m\n", ja);
         sem_v(kasa, 1);
     }
+    // Odłącz pamięć
     odlacz_pamiec_dzielona(pamiec);
-    exit(EXIT_SUCCESS);
 }

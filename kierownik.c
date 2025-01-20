@@ -14,7 +14,7 @@ int pamiec_id; // ID pamięci dzielonej
 int *pamiec; // Pamięć dzielona
 
 int main() {
-    if (signal(SIGINT, koniec) == SIG_ERR)
+    if (signal(SIGINT, szybki_koniec) == SIG_ERR)
     {
         perror("Blad obslugi sygnalu");
         exit(EXIT_FAILURE);
@@ -61,24 +61,10 @@ int main() {
     pthread_create(&symulacja_czasu, NULL, symuluj_czas, (void *)NULL);
 
     // Tworzymy fryzjerów
-    for (int i = 0; i < MAX_FRYZJEROW; i++) {
-        fryzjerzy[i] = fork();
-        if (fryzjerzy[i] == 0) {
-            execl("./fryzjer", "fryzjer", NULL);
-        }
-    }
+    tworz_fryzjerow();
 
     // Tworzymy klientów
-    for (int i = 0; i < MAX_KLIENTOW; i++) {
-        klienci[i] = fork();
-        if (klienci[i] == 0) {
-            execl("./klient", "klient", NULL);
-        }
-
-        // Losowy czas oczekiwania przed przyjściem kolejnego klienta (od 4 do 10 sekund)
-        int czas_oczekiwania = rand() % 3 + 1;
-        sleep(czas_oczekiwania);
-    }
+    tworz_klientow();
 
     // Możemy wysyłać sygnały lub zakończyć program
     char menu;
@@ -87,22 +73,23 @@ int main() {
         printf("2 - zakończ klientów\n");
         printf("3 - koniec\n");
 
+        while (getchar() != '\n'); // Czeszczenie bufora
         while(scanf("%c", &menu) != 1);
         switch (menu)
         {
         case '1':
-            s1 = 1;
             wyslij_s1();
+            tworz_fryzjerow();
             break;
         case '2':
-            s2 = 1;
             wyslij_s2();
+            tworz_klientow();
             break;
         case '3':
             koniec(0);
             break;
         default:
-            printf("inne - Niepoprawna opcja\n");
+            printf("Niepoprawna opcja\n");
             break;
         }
     }
@@ -110,20 +97,56 @@ int main() {
     exit(EXIT_FAILURE);
 }
 
+void tworz_fryzjerow() {
+    for (int i = 0; i < MAX_FRYZJEROW; i++) {
+        fryzjerzy[i] = fork();
+        if (fryzjerzy[i] == 0) {
+            execl("./fryzjer", "fryzjer", NULL);
+        }
+        printf("\033[0;36m[INFO]: Nowy fryzjer %d\033[0m\n", fryzjerzy[i]);
+    }
+}
+
+void tworz_klientow() {
+    for (int i = 0; i < MAX_KLIENTOW; i++) {
+        klienci[i] = fork();
+        if (klienci[i] == 0) {
+            execl("./klient", "klient", NULL);
+        }
+        printf("\033[0;36m[INFO]: Nowy klient %d\033[0m\n", klienci[i]);
+
+        // Losowy czas oczekiwania przed przyjściem kolejnego klienta (od 4 do 10 sekund)
+        int czas_oczekiwania = rand() % 3 + 10;
+        sleep(czas_oczekiwania);
+    }
+}
+
 void koniec(int s) {
     // Czekamy na zakończenie symulacji czasu
     zakoncz_symulacje_czasu();
 
     // Czekamy na zakończenie wszystkich klientów i fryzjerów
-    if (!s1) {
-        wyslij_s1();
-    }
-    if (!s2) {
-        wyslij_s2();
-    }
+    wyslij_s1();
+    wyslij_s2();
 
     // Zwalniamy zasoby
     zwolnij_zasoby();
+
+    exit(EXIT_SUCCESS);
+}
+
+void szybki_koniec(int s) {
+    zwolnij_zasoby();
+    for (int i = 0; i < MAX_FRYZJEROW; i++) {
+        kill(fryzjerzy[i], SIGKILL);
+    }
+    for (int i = 0; i < MAX_KLIENTOW; i++) {
+        kill(klienci[i], SIGKILL);
+    }
+    czekaj_na_procesy(MAX_FRYZJEROW);
+    czekaj_na_procesy(MAX_KLIENTOW);
+
+    zakoncz_symulacje_czasu();
 
     exit(EXIT_SUCCESS);
 }

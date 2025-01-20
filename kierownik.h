@@ -13,7 +13,10 @@
 #include "utils/semafory.h"
 
 void sprawdz_limit_procesow();
+void tworz_klientow();
+void tworz_fryzjerow();
 void koniec(int s);
+void szybki_koniec(int s);
 void czekaj_na_procesy(int n);
 void zakoncz_symulacje_czasu();
 void zwolnij_zasoby();

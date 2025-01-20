@@ -63,11 +63,11 @@ void sem_v(int id, int n)
     {
         if (errno == EINTR)
         {
-            sem_p_nowait(id, n);
+            sem_v(id, n);
         }
         else
         {
-            perror("semop p");
+            perror("semop v");
             exit(EXIT_FAILURE);
         }
     }
@@ -88,11 +88,11 @@ int sem_p_nowait(int id, int n)
         }
         else if (errno == EINTR)
         {
-            sem_p(id, n);
+            sem_p_nowait(id, n);
         }
         else
         {
-            perror("semop p");
+            perror("semop p nowait");
             exit(EXIT_FAILURE);
         }
     }
