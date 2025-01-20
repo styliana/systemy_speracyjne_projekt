@@ -116,7 +116,7 @@ void tworz_klientow() {
         printf("\033[0;36m[INFO]: Nowy klient %d\033[0m\n", klienci[i]);
 
         // Losowy czas oczekiwania przed przyjściem kolejnego klienta (od 4 do 10 sekund)
-        int czas_oczekiwania = rand() % 3 + 10;
+        int czas_oczekiwania = rand() % 3 + 1;
         sleep(czas_oczekiwania);
     }
 }

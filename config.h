@@ -1,4 +1,4 @@
-#define MAX_FOTELI 3                // Maksymalna liczba foteli w salonie
+#define MAX_FOTELI 1                  // Maksymalna liczba foteli w salonie
 #define MAX_KLIENTOW 5               // Maksymalna liczba klientów
 #define MAX_FRYZJEROW 2               // Maksymalna liczba fryzjerów
 #define MAX_POCZEKALNIA 5  // Liczba miejsc w poczekalni
