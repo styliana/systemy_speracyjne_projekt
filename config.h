@@ -1,7 +1,7 @@
-#define MAX_FOTELI 1                  // Maksymalna liczba foteli w salonie
-#define MAX_KLIENTOW 5               // Maksymalna liczba klientów
+#define MAX_FOTELI 3                  // Maksymalna liczba foteli w salonie
+#define MAX_KLIENTOW 10               // Maksymalna liczba klientów
 #define MAX_FRYZJEROW 2               // Maksymalna liczba fryzjerów
-#define MAX_POCZEKALNIA 5  // Liczba miejsc w poczekalni
+#define MAX_POCZEKALNIA 2  // Liczba miejsc w poczekalni
 #define KOMUNIKAT_POCZEKALNIA 1                 // Typ komunikatu w poczekalni
 #define NOMINALY 3
 #define CZAS_USLUGI 15
