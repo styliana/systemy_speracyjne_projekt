@@ -59,4 +59,13 @@ Na polecenie kierownika (sygnał 1) dany fryzjer kończy pracę przed zamknięci
 - 
 - Test symulacji czasu
 - 
-- Test zakończenia usługi	
+- Test zakończenia usługi
+
+
+**Jak skompilować program? :)**
+
+1. upewnij się, że masz +x dla compile.sh. Jeśli nie, dodaj sobie uprawnienia: chmod +x compile.sh
+
+2. ./compile.sh
+
+3. Odpal kierownika, on robi za tradycyjnego maina: ./kierownik
