@@ -117,6 +117,7 @@ void tworz_klientow() {
 
         // Losowy czas oczekiwania przed przyjściem kolejnego klienta (od 4 do 10 sekund)
         int czas_oczekiwania = rand() % 3 + 1;
+        //int czas_oczekiwania = 0; //tescik dla zerowych sleepow
         sleep(czas_oczekiwania);
     }
 }

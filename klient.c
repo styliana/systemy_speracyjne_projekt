@@ -153,6 +153,7 @@ int main() {
 
         // Praca losowy czas
         sleep(rand() % 100 + 10);
+        //sleep(0); //tescik dla zerowych sleepow
     }
     
     // Zwolnij semafor
